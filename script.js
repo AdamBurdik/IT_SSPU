@@ -119,69 +119,29 @@ function buildBreadcrumb(path) {
 	return crumb;
 }
 
-function makeEntry(entry) {
-	const isDir = entry.type === 'dir';
-	const a = document.createElement('a');
-	a.className = 'entry ' + (isDir ? 'dir' : 'file');
-	a.href = '#/' + entry.path + (isDir ? '/' : '');
-
-	const icon = document.createElement('span');
-	icon.className = 'entry-icon';
-	icon.textContent = isDir ? '📁' : iconFor(entry.name);
-	a.appendChild(icon);
-
-	const name = document.createElement('span');
-	name.className = 'entry-name';
-	name.textContent = entry.name;
-	a.appendChild(name);
-
-	if (isDir) {
-		const arrow = document.createElement('span');
-		arrow.className = 'entry-arrow';
-		arrow.textContent = '›';
-		a.appendChild(arrow);
-	}
-
-	return a;
-}
-
 async function showListing(viewer, path) {
-	viewer.innerHTML = '<p class="loading">Chvilku, koukám, co tady je…</p>';
+	viewer.innerHTML = '';
 
-	try {
-		const entries = await listDir(path);
-		viewer.innerHTML = '';
+	viewer.appendChild(buildBreadcrumb(path));
 
-		viewer.appendChild(buildBreadcrumb(path));
+	const wrap = document.createElement('div');
+	wrap.className = 'hint-wrap';
 
-		const heading = document.createElement('h2');
-		heading.className = 'page-title';
-		const title = path ? decodeURIComponent(path.split('/').pop()) : 'Vyber si soubor nebo složku';
-		heading.textContent = title;
-		viewer.appendChild(heading);
+	const hint = document.createElement('p');
+	hint.className = 'empty';
+	hint.textContent = path
+		? `Tohle je složka. Vyber si soubor ve stromu vlevo.`
+		: 'Vyber si soubor ve stromu vlevo.';
+	wrap.appendChild(hint);
 
-		if (!entries.length) {
-			const empty = document.createElement('p');
-			empty.className = 'empty';
-			empty.textContent = 'Tady je zatím pusto, nic tu není.';
-			viewer.appendChild(empty);
-			return;
-		}
+	const openBtn = document.createElement('button');
+	openBtn.type = 'button';
+	openBtn.className = 'open-tree-btn';
+	openBtn.textContent = '📁 Otevřít strom';
+	openBtn.addEventListener('click', () => setSidebarVisible(true));
+	wrap.appendChild(openBtn);
 
-		const byName = (a, b) => a.name.localeCompare(b.name, 'cs');
-		const dirs = entries.filter(e => e.type === 'dir').sort(byName);
-		const files = entries.filter(e => e.type === 'file').sort(byName);
-
-		const list = document.createElement('div');
-		list.className = 'file-list';
-
-		for (const d of dirs) list.appendChild(makeEntry(d));
-		for (const f of files) list.appendChild(makeEntry(f));
-
-		viewer.appendChild(list);
-	} catch (err) {
-		viewer.innerHTML = `<div class="error"><h2>Něco se nepovedlo</h2><p>${escapeHtml(err.message)}</p></div>`;
-	}
+	viewer.appendChild(wrap);
 }
 
 function buildHtmlViewer(filePath, text) {
@@ -334,3 +294,192 @@ async function handleRoute() {
 
 window.addEventListener('hashchange', handleRoute);
 window.addEventListener('DOMContentLoaded', handleRoute);
+
+// ---- Sidebar (VSCode-style file tree) ----
+
+let sidebarEl;
+
+let sidebarOpen = true;
+
+function setSidebarVisible(visible) {
+	sidebarOpen = visible;
+	document.body.classList.toggle('sidebar-visible', sidebarOpen);
+	const toggle = document.getElementById('sidebar-toggle');
+	toggle.setAttribute('aria-expanded', sidebarOpen ? 'true' : 'false');
+	// Backdrop only shows on mobile while the sidebar drawer is open.
+	document.getElementById('backdrop').hidden = !(window.innerWidth <= 820 && sidebarOpen);
+}
+
+function attachTreeEvents() {
+	const toggle = document.getElementById('sidebar-toggle');
+	const backdrop = document.getElementById('backdrop');
+
+	const onResize = () => setSidebarVisible(sidebarOpen);
+	window.addEventListener('resize', onResize);
+
+	toggle.addEventListener('click', () => setSidebarVisible(!sidebarOpen));
+	backdrop.addEventListener('click', () => setSidebarVisible(false));
+	document.getElementById('sidebar-close').addEventListener('click', () => setSidebarVisible(false));
+}
+
+function makeSidebarResizable() {
+	const sidebar = document.getElementById('sidebar');
+	const resizer = document.getElementById('sidebar-resizer');
+	const isMobile = () => window.innerWidth <= 820;
+	const clamp = (v, min, max) => Math.max(min, Math.min(v, max));
+
+	// Restore saved width.
+	const saved = localStorage.getItem('tree-width');
+	if (saved) sidebar.style.width = saved + 'px';
+
+	resizer.addEventListener('pointerdown', (e) => {
+		if (isMobile()) return;
+		e.preventDefault();
+		document.body.classList.add('resizing');
+		document.addEventListener('pointermove', onMove);
+		document.addEventListener('pointerup', onUp);
+	});
+
+	function onMove(e) {
+		const rect = sidebar.getBoundingClientRect();
+		const w = clamp(e.clientX - rect.left, 180, Math.min(640, window.innerWidth * 0.45));
+		sidebar.style.width = w + 'px';
+		localStorage.setItem('tree-width', w);
+	}
+
+	function onUp() {
+		document.body.classList.remove('resizing');
+		document.removeEventListener('pointermove', onMove);
+		document.removeEventListener('pointerup', onUp);
+	}
+}
+
+function buildTreeItem(entry) {
+	const isDir = entry.type === 'dir';
+	const row = document.createElement('div');
+	row.className = 'tree-item ' + (isDir ? 'dir' : 'file');
+	row.dataset.kind = isDir ? 'dir' : 'file';
+	row.dataset.name = entry.name;
+	row.dataset.path = entry.path;
+
+	const caret = document.createElement('span');
+	caret.className = 'caret';
+	caret.textContent = isDir ? '▸' : '';
+	row.appendChild(caret);
+
+	const icon = document.createElement('span');
+	icon.className = 'entry-icon';
+	icon.textContent = isDir ? '📁' : iconFor(entry.name);
+	row.appendChild(icon);
+
+	const name = document.createElement('span');
+	name.className = 'entry-name';
+	name.textContent = entry.name;
+	row.appendChild(name);
+
+	if (isDir) {
+		row.addEventListener('click', () => toggleDir(row, entry.path));
+	} else {
+		row.addEventListener('click', () => {
+			window.location.hash = '#/' + entry.path;
+		});
+	}
+	return row;
+}
+
+async function expandDir(row, path) {
+	if (row.classList.contains('loaded')) {
+		row.classList.add('open');
+		if (row._children) row._children.hidden = false;
+		return;
+	}
+
+	row.classList.add('open', 'loaded');
+	const children = document.createElement('div');
+	children.className = 'tree-children';
+	children.style.paddingLeft = '0.9rem';
+	row._children = children;
+	row.after(children);
+
+	try {
+		const entries = await listDir(path);
+		children.append(...entries.map(buildTreeItem));
+	} catch (e) {
+		children.remove();
+		row.classList.remove('open', 'loaded');
+	}
+}
+
+function collapseDir(row) {
+	row.classList.remove('open');
+	if (row._children) row._children.hidden = true;
+}
+
+function toggleDir(row, path) {
+	if (row.classList.contains('open')) collapseDir(row);
+	else expandDir(row, path);
+}
+
+function findTreeItem(el, name) {
+	const items = el.querySelectorAll(':scope > .tree-item');
+	for (const it of items) if (it.dataset.name === name) return it;
+	return null;
+}
+
+async function revealPath(path) {
+	sidebarEl.querySelectorAll('.tree-item.active').forEach(n => n.classList.remove('active'));
+	if (!path) return;
+
+	const parts = path.split('/');
+	let container = sidebarEl.querySelector('.tree-root');
+	let acc = '';
+
+	for (let i = 0; i < parts.length; i++) {
+		const isLast = i === parts.length - 1;
+		acc += (acc ? '/' : '') + parts[i];
+		const row = findTreeItem(container, parts[i]);
+		if (!row) break;
+
+		if (row.dataset.kind === 'dir') {
+			if (!row.classList.contains('loaded')) {
+				await expandDir(row, acc);
+			} else {
+				row.classList.add('open');
+				if (row._children) row._children.hidden = false;
+			}
+			if (isLast) row.classList.add('active');
+			container = row._children;
+		} else {
+			if (isLast) row.classList.add('active');
+			break;
+		}
+	}
+}
+
+function updateActive() {
+	const hash = window.location.hash;
+	const filePath = hash ? hash.replace(/^#\/?/, '') : '';
+	revealPath(filePath.replace(/\/$/, ''));
+}
+
+async function initTree() {
+	sidebarEl = document.getElementById('sidebar');
+	attachTreeEvents();
+	setSidebarVisible(window.innerWidth > 820);
+	makeSidebarResizable();
+
+	const root = sidebarEl.querySelector('.tree-root');
+	const container = document.createElement('div');
+	container.className = 'tree-children';
+	root.appendChild(container);
+
+	try {
+		const entries = await listDir('');
+		container.append(...entries.map(buildTreeItem));
+	} catch (e) {}
+
+	updateActive();
+	window.addEventListener('hashchange', updateActive);
+}
+
+window.addEventListener('DOMContentLoaded', initTree);
