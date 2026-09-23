@@ -254,16 +254,25 @@ function fileNameFor(path) {
 	return decodeURIComponent(path.split('/').pop());
 }
 
+async function fetchFile(filePath) {
+	const res = await fetch(filePath);
+	if (res.ok) return res.text();
+
+	if (res.status === 404) {
+		const raw = `https://raw.githubusercontent.com/${REPO.owner}/${REPO.name}/main/${filePath}`;
+		const rawRes = await fetch(raw);
+		if (rawRes.ok) return rawRes.text();
+		throw new Error(`Soubor se nepodařilo stáhnout (kód ${rawRes.status}).`);
+	}
+
+	throw new Error(`Soubor se nepodařilo stáhnout (kód ${res.status}).`);
+}
+
 async function showFile(viewer, filePath) {
 	viewer.innerHTML = '<p class="loading">Moment, otevírám soubor…</p>';
 
 	try {
-		const response = await fetch(filePath);
-		if (!response.ok) {
-			throw new Error(`Soubor se nepodařilo stáhnout (kód ${response.status}).`);
-		}
-
-		const text = await response.text();
+		const text = await fetchFile(filePath);
 		viewer.innerHTML = '';
 
 		const fileName = decodeURIComponent(filePath.split('/').pop());
