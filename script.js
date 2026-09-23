@@ -37,6 +37,10 @@ function isAbsoluteUrl(val) {
 	return /^(?:[a-z][a-z0-9+.-]*:|\/\/|\/|#|data:)/i.test(val);
 }
 
+function stripLiquidRaw(html) {
+	return html.replace(/\{%\s*raw\s*%\}|\{%\s*endraw\s*%\}/gi, '');
+}
+
 function fixRelativeLinks(html, baseDir) {
 	const wrapper = document.createElement('div');
 	wrapper.innerHTML = html;
@@ -281,7 +285,7 @@ async function showFile(viewer, filePath) {
 			img.alt = fileName;
 			card.appendChild(img);
 		} else if (filePath.endsWith('.md')) {
-			card.innerHTML = fixRelativeLinks(marked.parse(text), parentDir);
+			card.innerHTML = fixRelativeLinks(stripLiquidRaw(marked.parse(text)), parentDir);
 		} else if (isHtml(filePath)) {
 			card.appendChild(buildHtmlViewer(filePath, text));
 		} else {
