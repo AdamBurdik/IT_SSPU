@@ -1,23 +1,32 @@
 <!DOCTYPE html>
 <html lang="cs">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>IT SŠPU</title>
-    <link rel="stylesheet" type="text/css" href="1_rocnik/jazyky/html_css/mainPage.css">
-</head>
-<body>
-    <h1>IT SŠPU</h1>
-    <p class="popis">
-        Zobrazovač HTML souborů
-    <p>
-        <br>
-    <button class="button-85" onclick="window.location.href='https://studenti-sspu-opavagithub.io/IT_SSPU/1_rocnik/jazyky/html_css/'">1_rocnik</button><br><br>
-    <button class="button-85" onclick="window.location.href='https://studenti-sspu-opavagithub.io/IT_SSPU/2_rocnik/Programove_vybaveni/html_css/'">2_rocnik</button><br><br><br><br>
-    <button class="button-85" onclick="window.location.href='https://github.com/Studenti-SSPU-Opava/IT_SSPU'"><b>Zpět do repozitáře</b></button><br><br>
-    </p>
-<footer>
-    <p>&copy; 2024</p>
-</footer>
-</body>
+	<head>
+	    <meta charset="UTF-8">
+	    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+	    <title>IT SŠPU</title>
+	    <link rel="stylesheet" type="text/css" href="style.css">
+	</head>
+	<body>
+	    <header>
+        <nav class="toolbar">
+            <a class="toolbtn" href="#/">Domů</a>
+            <a class="toolbtn" id="repo-link" href="https://github.com/Studenti-SSPU-Opava/IT_SSPU" target="_blank" rel="noopener">Repo</a>
+            <a class="toolbtn" id="wiki-link" href="https://github.com/Studenti-SSPU-Opava/IT_SSPU/wiki" target="_blank" rel="noopener">Wiki</a>
+            <a class="toolbtn" href="https://discord.gg/UMAnkXeGAh" target="_blank" rel="noopener">Discord</a>
+        </nav>
+	        <h1>IT SŠPU</h1>
+	        <p>Materiály ze školy na jednom místě</p>
+	    </header>
+
+		<main id="viewer">
+			
+		</main>
+
+	<footer>
+	    <p>&copy; 2024</p>
+	</footer>
+
+	<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+	<script src="script.js"></script>
+	</body>
 </html>
